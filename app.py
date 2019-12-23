@@ -20,3 +20,8 @@ def upload():
                 </body>
                 </html>"""
     return Response(template, status_code=200, headers={"Content-Type": "text/html", "Access-Control-Allow-Origin": "*"})
+
+
+@app.route('/upload', methods=['POST'])
+def create_user():
+    request = app.current_request
