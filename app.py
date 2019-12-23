@@ -25,6 +25,13 @@ def upload():
                         <input type="submit" value="Upload Image" id="sbmit" name="submit" disabled>
                 </form>
                 </body>
+                <script>
+				document.getElementById('fileToUpload').addEventListener("change", changeAction);
+				const sbmit = document.getElementById('sbmit');
+				function changeAction(e){
+					sbmit.disabled = !(e.target.files[0].name);
+				}
+				</script>
                 </html>"""
     return Response(template, status_code=200, headers={"Content-Type": "text/html", "Access-Control-Allow-Origin": "*"})
 
