@@ -2,9 +2,13 @@ from chalice import Chalice, Response
 import filetype
 import logging
 import json
-import gzip
 import cgi
 from io import BytesIO
+import codecs
+import boto3
+
+s3_client = boto3.client('s3')
+BUCKET = 'sebastian-testbucket'
 
 app = Chalice(app_name='Test')
 app.debug = True
@@ -21,7 +25,7 @@ def upload():
                 <body>
                 <form action="/api/upload" method="post" id="frm" enctype="multipart/form-data">
                         Select File to upload:
-                        <input type="file" name="fileToUpload" id="fileToUpload">
+                        <input type="file" name="file" id="fileToUpload">
                         <input type="submit" value="Upload Image" id="sbmit" name="submit" disabled>
                 </form>
                 </body>
@@ -40,11 +44,22 @@ def _get_parts():
     content_type = app.current_request.headers['content-type']
     _, parameters = cgi.parse_header(content_type)
     parameters['boundary'] = parameters['boundary'].encode('utf-8')
+    parameters['CONTENT-LENGTH'] = 200000
     parsed = cgi.parse_multipart(rfile, parameters)
     return parsed
 
+
+
 @app.route('/upload', methods=['POST'], content_types=['multipart/form-data'])
-def upload_body():
+def upload_file():
     files = _get_parts()
-    print(files)
-    return {k: v[0].decode('utf-8') for (k, v) in files.items()}
+
+    with open('/tmp/test.png', 'wb') as tmp_file:
+        tmp_file.write(files["file"][0])
+    kind = filetype.guess('/tmp/test.png')
+
+    s3_client.upload_file('/tmp/test.png', BUCKET, 'test.png')
+    return {"file": json.dumps(kind)}
+
+    # app.log.debug(files)
+    # return {"file": files["file"][0].decode('utf-8')}
