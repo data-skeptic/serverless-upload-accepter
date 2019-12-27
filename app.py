@@ -98,8 +98,7 @@ def upload_file(file_name):
         s3 = boto3.resource('s3')
         file_path = datetime.today().strftime('uploads/%Y/%m/%d/{}/{}.pdf').format(unix_timestamp_ms(), get_file_name(file_name))
         s3.Bucket(BUCKET).put_object(Key=file_path, Body=parsed_file_data)
-        # return Response(body={'Success': 'Uploaded file to s3'}, status_code=200)
-
+        return Response(body={'Success': 'Uploaded file to s3'}, status_code=200)
     except:
         return Response(body={'error': 'Save file to S3 error!'}, status_code=500)
 
