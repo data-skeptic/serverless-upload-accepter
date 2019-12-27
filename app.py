@@ -4,10 +4,12 @@ import logging
 import cgi
 from io import BytesIO
 import boto3
+import base64
 
 app = Chalice(app_name='Test')
 app.debug = True
 app.log.setLevel(logging.DEBUG)
+app.api.binary_types.append("multipart/form-data")
 
 s3_client = boto3.client('s3')
 BUCKET = 'sebastian-testbucket'
@@ -42,7 +44,7 @@ def upload():
 def parse_form_data():
     request_body = app.current_request._body
     if isinstance(request_body, str):
-        request_body = request_body.encode()
+        request_body = base64.b64decode(request_body)
     content_type_obj = app.current_request.to_dict()['headers']['content-type']
     content_type, property_dict = cgi.parse_header(content_type_obj)
     property_dict['boundary'] = property_dict['boundary'].encode('utf-8')
