@@ -1,20 +1,18 @@
 from chalice import Chalice, Response
 import filetype
 import logging
-import json
 import cgi
 from io import BytesIO
-import codecs
 import boto3
-
-s3_client = boto3.client('s3')
-BUCKET = 'sebastian-testbucket'
 
 app = Chalice(app_name='Test')
 app.debug = True
 app.log.setLevel(logging.DEBUG)
 
-@app.route('/')
+s3_client = boto3.client('s3')
+BUCKET = 'sebastian-testbucket'
+
+@app.route('/', cors=True)
 def index():
     return {'hello': 'world'}
 
@@ -23,7 +21,7 @@ def upload():
     template = """<!DOCTYPE html>
                 <html>
                 <body>
-                <form action="/api/upload" method="post" id="frm" enctype="multipart/form-data">
+                <form action="#" method="post" id="frm" enctype="multipart/form-data">
                         Select File to upload:
                         <input type="file" name="file" id="fileToUpload">
                         <input type="submit" value="Upload Image" id="sbmit" name="submit" disabled>
@@ -32,34 +30,56 @@ def upload():
                 <script>
 				document.getElementById('fileToUpload').addEventListener("change", changeAction);
 				const sbmit = document.getElementById('sbmit');
+				const frm = document.getElementById('frm');
 				function changeAction(e){
 					sbmit.disabled = !(e.target.files[0].name);
+                    frm.action = "/api/upload/" + e.target.files[0].name;
 				}
 				</script>
                 </html>"""
     return Response(template, status_code=200, headers={"Content-Type": "text/html", "Access-Control-Allow-Origin": "*"})
 
-def _get_parts():
-    rfile = BytesIO(app.current_request.raw_body)
-    content_type = app.current_request.headers['content-type']
-    _, parameters = cgi.parse_header(content_type)
-    parameters['boundary'] = parameters['boundary'].encode('utf-8')
-    parameters['CONTENT-LENGTH'] = 200000
-    parsed = cgi.parse_multipart(rfile, parameters)
-    return parsed
+def parse_form_data():
+    request_body = app.current_request._body
+    if isinstance(request_body, str):
+        request_body = request_body.encode()
+    content_type_obj = app.current_request.to_dict()['headers']['content-type']
+    content_type, property_dict = cgi.parse_header(content_type_obj)
+    property_dict['boundary'] = property_dict['boundary'].encode('utf-8')
+    property_dict['CONTENT-LENGTH'] = 123450000
+    form_data = cgi.parse_multipart(BytesIO(request_body), property_dict)
+    return form_data['file'][0]
+
+def save_file_to_temp(file_data, file_name):
+    full_path = '/tmp/{}'.format(file_name)
+    with open(full_path, 'wb+') as f:
+        f.write(file_data)
+    return full_path
 
 
+@app.route('/upload/{file_name}', methods=['POST'], cors=True, content_types=['multipart/form-data'])
+def upload_file(file_name):
+    # Form data pare to file
+    parsed_file_data = ''
+    try:
+        parsed_file_data = parse_form_data()
+        pass
+    except:
+        return Response(body={'error': 'Form Data parse error!'}, status_code=200)
 
-@app.route('/upload', methods=['POST'], content_types=['multipart/form-data'])
-def upload_file():
-    files = _get_parts()
+    # Save file to tmp folder
+    tmp_file_path = ''
+    try:
+        tmp_file_path = save_file_to_temp(parsed_file_data, file_name)
+    except:
+        return {'error': 'Save file to tmp folder error!'}
 
-    with open('/tmp/test.png', 'wb') as tmp_file:
-        tmp_file.write(files["file"][0])
-    kind = filetype.guess('/tmp/test.png')
-
-    s3_client.upload_file('/tmp/test.png', BUCKET, 'test.png')
-    return {"file": json.dumps(kind)}
-
-    # app.log.debug(files)
-    # return {"file": files["file"][0].decode('utf-8')}
+    # Check file type
+    try:
+        kind = filetype.guess(tmp_file_path)
+        if kind.mime == 'application/pdf':
+            return Response(body={'Success': 'This is a pdf'}, status_code=200)
+        else:
+            return Response(body={'Success': 'This is not a pdf'}, status_code=200)
+    except:
+        return Response(body={'error': 'This is not a pdf'}, status_code=200)
