@@ -12,9 +12,9 @@ import urllib.request
 
 
 # Config ->
-BUCKET='sebastian-testbucket'
-ACCESS_KEY_ID = 'AKIASGDKGAPOUCSAFWF6'
-SECRET_ACCESS_KEY = '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'
+BUCKET=''
+ACCESS_KEY_ID = ''
+SECRET_ACCESS_KEY = ''
 # <- Config
 
 s3_client = boto3.client(
