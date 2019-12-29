@@ -7,7 +7,6 @@ from io import BytesIO
 import boto3
 import time
 import os
-import logging
 import urllib.request
 
 
@@ -24,10 +23,6 @@ s3_client = boto3.client(
 )
 
 app = Chalice(app_name='Test')
-app.debug = True
-app.log.setLevel(logging.DEBUG)
-
-
 
 app.api.binary_types.append("multipart/form-data")
 
